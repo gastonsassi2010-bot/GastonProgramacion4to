@@ -135,28 +135,150 @@ sucursales = {"Oeste": ["Merlo", "Castelar", "Ramos Mejía"],
 # FUNCIÓN PARA BUSCAR USUARIO POR DNI
 def buscarUsuarioPorDni(nroBuscado):
   print("\nBuscando usuario...")
+  for usuario in usuarios:
+    if usuario["Dni"] == int(nroBuscado):
+      return usuario
+  return None
 
 # FUNCIÓN PARA CONSULTAR EL SALDO
 def consultarSaldo(usuario):
   print("\nConsultando Saldo...")
+  print("-" * 45)
+  print(f"Titular:          {usuario['Nombre']} {usuario['Apellido']}")
+  print(f"Cuenta N°:        {usuario['Cuenta']}")
+  print(f"Saldo disponible: ${usuario['Saldo']}")
+  print("-" * 45)
 
 # FUNCIÓN PARA CONSULTAR FACTURAS
 def consultarFacturas(usuario):
   print("\nConsultando Facturas...")
+  facturas = usuario.get("FacturasAdeudadas", [])
+  if not facturas:
+    print(f"\n{usuario['Nombre']}, no registras facturas adeudadas.")
+    return
+
+  print(f"\n--- FACTURAS ADEUDADAS DE {usuario['Nombre'].upper()} {usuario['Apellido'].upper()} ---")
+  total = 0
+  for i, fac in enumerate(facturas, start=1):
+    print(f"  {i}. Servicio: {fac['Servicio']:<16} | Vto: {fac['Vencimiento']} | Importe: ${fac['Valor']}")
+    total += fac["Valor"]
+  print("-" * 55)
+  print(f"Total adeudado: ${total}")
 
 # FUNCIÓN PARA PAGAR FACTURAS
 def pagarFacturas(usuario):
   print("\nPagando Facturas...")
-# LAS FACTURAS SOLO SE PAGAN SI TIENES SALDO SUFICIENTE
-# SI LAS FACTURAS SE PAGAN, SE BORRAN DEL DICCIONARIO
+  # LAS FACTURAS SOLO SE PAGAN SI TIENES SALDO SUFICIENTE
+  # SI LAS FACTURAS SE PAGAN, SE BORRAN DEL DICCIONARIO
+  facturas = usuario.get("FacturasAdeudadas", [])
+  if not facturas:
+    print(f"\n{usuario['Nombre']}, no tienes facturas pendientes de pago.")
+    return
+
+  total = sum(f["Valor"] for f in facturas)
+  print(f"\nFacturas adeudadas ({len(facturas)}):")
+  for i, fac in enumerate(facturas, start=1):
+    print(f"  {i}. {fac['Servicio']} - Vencimiento: {fac['Vencimiento']} - ${fac['Valor']}")
+  print(f"\nTotal a pagar: ${total}")
+  print(f"Tu saldo actual es: ${usuario['Saldo']}")
+
+  pago_total = input("\n¿Desea pagar la totalidad de las facturas? (SI/NO): ").strip().upper()
+  if pago_total == "SI":
+    if usuario["Saldo"] >= total:
+      usuario["Saldo"] -= total
+      facturas.clear()
+      print("\n¡Pago realizado con éxito! Se han abonado todas las facturas adeudadas.")
+      print(f"Tu nuevo saldo es: ${usuario['Saldo']}")
+    else:
+      print(f"\nSaldo insuficiente para abonar el total (${total}). Tu saldo es de ${usuario['Saldo']}.")
+      pago_individual = input("¿Deseas pagar una factura de forma individual? (SI/NO): ").strip().upper()
+      if pago_individual == "SI":
+        pagarFacturaIndividual(usuario)
+  else:
+    pago_individual = input("¿Deseas seleccionar una factura individual para pagar? (SI/NO): ").strip().upper()
+    if pago_individual == "SI":
+      pagarFacturaIndividual(usuario)
+
+# FUNCIÓN AUXILIAR PARA PAGAR UNA FACTURA INDIVIDUAL
+def pagarFacturaIndividual(usuario):
+  facturas = usuario.get("FacturasAdeudadas", [])
+  if not facturas:
+    print("No hay facturas pendientes.")
+    return
+
+  print("\nSeleccione el número de factura a pagar:")
+  for i, fac in enumerate(facturas, start=1):
+    print(f"  {i}. {fac['Servicio']} - ${fac['Valor']}")
+
+  opcion_fac = input("Ingrese el número de la factura: ").strip()
+  if opcion_fac.isdigit() and 1 <= int(opcion_fac) <= len(facturas):
+    indice = int(opcion_fac) - 1
+    factura_seleccionada = facturas[indice]
+    if usuario["Saldo"] >= factura_seleccionada["Valor"]:
+      usuario["Saldo"] -= factura_seleccionada["Valor"]
+      servicio_pagado = factura_seleccionada["Servicio"]
+      del facturas[indice]
+      print(f"\n¡Factura de {servicio_pagado} abonada con éxito!")
+      print(f"Tu nuevo saldo es: ${usuario['Saldo']}")
+    else:
+      print(f"\nSaldo insuficiente para abonar esta factura (${factura_seleccionada['Valor']}). Tu saldo es ${usuario['Saldo']}.")
+  else:
+    print("Opción de factura inválida.")
 
 # FUNCIÓN PARA CONSULTAR SUCURSALES
 def consultarSucursales():
   print("\nAccediendo a datos de sucursales...")
+  print("\n" + "=" * 40)
+  print("         SUCURSALES DISPONIBLES         ")
+  print("=" * 40)
+  for zona, lista_suc in sucursales.items():
+    print(f"\nZona {zona}:")
+    for suc in lista_suc:
+      print(f"  • {suc}")
+  print("=" * 40)
 
 # FUNCIÓN PARA SACAR TURNO
 def sacarTurno():
   print("\nObteniendo horarios disponibles...")
+  print("\nSeleccione la zona para la atención:")
+  zonas = list(sucursales.keys())
+  for i, zona in enumerate(zonas, start=1):
+    print(f"  {i}. {zona}")
+
+  opc_zona = input("Ingrese el número de la zona: ").strip()
+  if not (opc_zona.isdigit() and 1 <= int(opc_zona) <= len(zonas)):
+    print("Opción de zona no válida.")
+    return
+
+  zona_elegida = zonas[int(opc_zona) - 1]
+  lista_sucursales = sucursales[zona_elegida]
+
+  print(f"\nSucursales disponibles en Zona {zona_elegida}:")
+  for i, suc in enumerate(lista_sucursales, start=1):
+    print(f"  {i}. {suc}")
+
+  opc_suc = input("Ingrese el número de la sucursal deseada: ").strip()
+  if not (opc_suc.isdigit() and 1 <= int(opc_suc) <= len(lista_sucursales)):
+    print("Opción de sucursal no válida.")
+    return
+
+  sucursal_elegida = lista_sucursales[int(opc_suc) - 1]
+
+  # Generar fecha y hora disponibles usando datetime y random
+  dias_sumar = random.randint(1, 10)
+  fecha_turno = datetime.date.today() + datetime.timedelta(days=dias_sumar)
+  hora_turno = f"{random.randint(9, 17):02d}:{random.choice(['00', '15', '30', '45'])}"
+  codigo_turno = f"TRN-{random.randint(1000, 9999)}"
+
+  print("\n" + "=" * 45)
+  print("         ¡TURNO SOLICITADO CON ÉXITO!        ")
+  print("=" * 45)
+  print(f"  Código de Turno: {codigo_turno}")
+  print(f"  Sucursal:        {sucursal_elegida} ({zona_elegida})")
+  print(f"  Fecha:           {fecha_turno.strftime('%d/%m/%Y')}")
+  print(f"  Horario:         {hora_turno} hs")
+  print("=" * 45)
+  print("Presentarse 10 minutos antes con DNI y el código de turno.")
 
 
 
@@ -166,10 +288,19 @@ def sacarTurno():
 print("\n**¡Hola! Soy Telmo, tu asistente virtual**")
 
 # SOLICITAR DNI CON input() Y ALMACENARLO EN UNA VARIABLE
-
 # BUSCAR USUARIO SEGÚN SU DNI Y ALMACENARLO EN UNA VARIABLE LLAMADA "usuarioActual"
+usuarioActual = None
+while usuarioActual is None:
+  dni_ingresado = input("\nPor favor, ingrese su número de DNI (sin puntos): ").strip()
+  if dni_ingresado.isdigit():
+    usuarioActual = buscarUsuarioPorDni(int(dni_ingresado))
+    if usuarioActual is None:
+      print("No se encontró ningún usuario con ese DNI. Por favor, verifique el número.")
+  else:
+    print("DNI inválido. Debe contener únicamente números.")
 
 # SALUDAR AL "usuarioActual" SEGÚN SU NOMBRE
+print(f"\n¡Bienvenido/a {usuarioActual['Nombre']} {usuarioActual['Apellido']}!")
 
 
 # BUCLE DEL CHATBOT - PERMITIR ELEGIR OPCIONES HASTA QUE DESEE TERMINAR
@@ -184,14 +315,25 @@ while continuar == "SI":
   3. Pagar facturas
   4. Consultar sucursales
   5. Solicitar un turno
-  >>>>>>>>>>>>: """)
+  >>>>>>>>>>>>: """).strip()
 
-# VERIFICAR QUE LA OPCIÓN INGRESADA SEA CORRECTA
+  # VERIFICAR QUE LA OPCIÓN INGRESADA SEA CORRECTA
+  # USAR UN CONDICIONAL PARA EJECUTAR LA FUNCIÓN QUE CORRESPONDA SEGÚN LA ELECCIÓN
+  if opcion == "1":
+    consultarSaldo(usuarioActual)
+  elif opcion == "2":
+    consultarFacturas(usuarioActual)
+  elif opcion == "3":
+    pagarFacturas(usuarioActual)
+  elif opcion == "4":
+    consultarSucursales()
+  elif opcion == "5":
+    sacarTurno()
+  else:
+    print("\nOpción no válida. Por favor, ingrese un número del 1 al 5.")
 
-# USAR UN CONDICIONAL PARA EJECUTAR LA FUNCIÓN QUE CORRESPONDA SEGÚN LA ELECCIÓN
-
-# PREGUNTAR SI DESEA CONTINUAR
-  continuar = "NO"
+  # PREGUNTAR SI DESEA CONTINUAR
+  continuar = input("\n¿Desea realizar otra operación? (SI/NO): ").strip().upper()
 
 
 # CUANDO TERMINA EL BUCLE, SE MUESTRA UN MENSAJE DE DESPEDIDA
